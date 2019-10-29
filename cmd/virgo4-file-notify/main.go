@@ -34,7 +34,7 @@ func main() {
 	_, err = aws.BatchMessagePut(outQueueHandle, block)
 	fatalIfError(err)
 
-	fmt.Printf("OK\n")
+	fmt.Printf("Notified s3://%s/%s OK\n", cfg.BucketName, cfg.ObjectKey )
 }
 
 func makeOutboundMessage(bucket string, key string) (*awssqs.Message, error) {
