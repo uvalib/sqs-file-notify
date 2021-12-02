@@ -3,8 +3,7 @@ module github.com/uvalib/virgo4-file-notify
 go 1.13
 
 require (
-	github.com/aws/aws-sdk-go v1.25.21
-	github.com/uvalib/virgo4-sqs-sdk/awssqs v0.0.0-20191022142704-678d19090c2c
-	golang.org/x/net v0.0.0-20191028085509-fe3aa8a45271 // indirect
-	golang.org/x/text v0.3.2 // indirect
+	github.com/aws/aws-sdk-go v1.42.17
+	github.com/google/uuid v1.3.0 // indirect
+	github.com/uvalib/virgo4-sqs-sdk/awssqs v0.0.0-20210428110216-a6aa4cc03d14
 )
