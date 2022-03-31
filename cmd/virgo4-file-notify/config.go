@@ -7,9 +7,10 @@ import (
 
 // ServiceConfig defines all of the service configuration parameters
 type ServiceConfig struct {
-	OutQueueName string // SQS queue name for outbound documents
-	BucketName   string // the bucket name
-	ObjectKey    string // the object key
+	OutQueueName  string // SQS queue name for outbound documents
+	BucketName    string // the bucket name
+	ObjectKey     string // the object key
+	ObjectKeyFile string // the file of object keys
 }
 
 // LoadConfiguration will load the service configuration from env/cmdline
@@ -21,17 +22,22 @@ func LoadConfiguration() *ServiceConfig {
 	flag.StringVar(&cfg.OutQueueName, "outqueue", "", "Output queue name")
 	flag.StringVar(&cfg.BucketName, "bucket", "", "The bucket name")
 	flag.StringVar(&cfg.ObjectKey, "key", "", "The object key")
+	flag.StringVar(&cfg.ObjectKeyFile, "keyfile", "", "The object key file")
 
 	flag.Parse()
 
 	if len(cfg.OutQueueName) == 0 {
-		log.Fatalf("OutQueueName cannot be blank")
+		log.Fatalf("outqueue cannot be blank")
 	}
 	if len(cfg.BucketName) == 0 {
-		log.Fatalf("BucketName cannot be blank")
+		log.Fatalf("bucket cannot be blank")
 	}
-	if len(cfg.ObjectKey) == 0 {
-		log.Fatalf("ObjectKey cannot be blank")
+	if len(cfg.ObjectKey) == 0 && len(cfg.ObjectKeyFile) == 0 {
+		log.Fatalf("key or keyfile must be specified")
+	} else {
+		if len(cfg.ObjectKey) != 0 && len(cfg.ObjectKeyFile) != 0 {
+			log.Fatalf("one of key or keyfile must be specified")
+		}
 	}
 
 	return &cfg

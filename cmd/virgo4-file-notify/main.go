@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"github.com/uvalib/virgo4-sqs-sdk/awssqs"
+	"os"
 )
 
 //
@@ -22,19 +24,66 @@ func main() {
 	outQueueHandle, err := aws.QueueHandle(cfg.OutQueueName)
 	fatalIfError(err)
 
-	// get the necessary S3 attributes and create the outbound message
-	message, err := makeOutboundMessage(cfg.BucketName, cfg.ObjectKey)
-	fatalIfError(err)
+	// just doing a single key
+	if len(cfg.ObjectKey) != 0 {
+		// get the necessary S3 attributes and create the outbound message
+		message, err := makeOutboundMessage(cfg.BucketName, cfg.ObjectKey)
+		fatalIfError(err)
 
-	// the block of messages to send
-	block := make([]awssqs.Message, 0, 1)
-	block = append(block, *message)
+		// the block of messages to send
+		block := make([]awssqs.Message, 0, 1)
+		block = append(block, *message)
 
-	// write to the outbound queue
-	_, err = aws.BatchMessagePut(outQueueHandle, block)
-	fatalIfError(err)
+		// write to the outbound queue
+		_, err = aws.BatchMessagePut(outQueueHandle, block)
+		fatalIfError(err)
 
-	fmt.Printf("Notified s3://%s/%s OK\n", cfg.BucketName, cfg.ObjectKey )
+		fmt.Printf("1 of 1: notified s3://%s/%s OK\n", cfg.BucketName, cfg.ObjectKey)
+	} else {
+		file, err := os.Open(cfg.ObjectKeyFile)
+		fatalIfError(err)
+		scanner := bufio.NewScanner(file)
+		scanner.Split(bufio.ScanLines)
+		var keys []string
+
+		for scanner.Scan() {
+			keys = append(keys, scanner.Text())
+		}
+
+		file.Close()
+
+		batchSize := 10
+		block := make([]awssqs.Message, 0, batchSize)
+		for ix, key := range keys {
+
+			// get the necessary S3 attributes and create the outbound message
+			message, err := makeOutboundMessage(cfg.BucketName, key)
+			fatalIfError(err)
+
+			// the block of messages to send
+			block = append(block, *message)
+
+			// time to send the block
+			if len(block) == batchSize {
+
+				// write to the outbound queue
+				_, err = aws.BatchMessagePut(outQueueHandle, block)
+				fatalIfError(err)
+				fmt.Printf("%d of %d: notified OK\n", ix+1, len(keys))
+
+				// truncate the block
+				block = block[:0]
+			}
+
+		}
+		if len(block) != 0 {
+
+			// write to the outbound queue
+			_, err = aws.BatchMessagePut(outQueueHandle, block)
+			fatalIfError(err)
+			fmt.Printf("%d of %d: notified OK\n", len(keys), len(keys))
+		}
+	}
 }
 
 func makeOutboundMessage(bucket string, key string) (*awssqs.Message, error) {
