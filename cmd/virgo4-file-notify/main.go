@@ -4,8 +4,10 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
-	"github.com/uvalib/virgo4-sqs-sdk/awssqs"
 	"os"
+
+	"github.com/uvalib/uva-aws-s3-sdk/uva-s3"
+	"github.com/uvalib/virgo4-sqs-sdk/awssqs"
 )
 
 //
@@ -16,8 +18,12 @@ func main() {
 	// Get config params and use them to init service context. Any issues are fatal
 	cfg := LoadConfiguration()
 
-	// load our AWS_SQS helper object
+	// load our AWS sqs helper object
 	aws, err := awssqs.NewAwsSqs(awssqs.AwsSqsConfig{MessageBucketName: "bla"})
+	fatalIfError(err)
+
+	// load our AWS s3 helper object
+	s3Svc, err := uva_s3.NewUvaS3(uva_s3.UvaS3Config{Logging: true})
 	fatalIfError(err)
 
 	// get the queue handles from the queue name
@@ -27,7 +33,7 @@ func main() {
 	// just doing a single key
 	if len(cfg.ObjectKey) != 0 {
 		// get the necessary S3 attributes and create the outbound message
-		message, err := makeOutboundMessage(cfg.BucketName, cfg.ObjectKey)
+		message, err := makeOutboundMessage(s3Svc, cfg.BucketName, cfg.ObjectKey)
 		fatalIfError(err)
 
 		// the block of messages to send
@@ -57,7 +63,7 @@ func main() {
 		for ix, key := range keys {
 
 			// get the necessary S3 attributes and create the outbound message
-			message, err := makeOutboundMessage(cfg.BucketName, key)
+			message, err := makeOutboundMessage(s3Svc, cfg.BucketName, key)
 			fatalIfError(err)
 
 			// the block of messages to send
@@ -86,18 +92,24 @@ func main() {
 	}
 }
 
-func makeOutboundMessage(bucket string, key string) (*awssqs.Message, error) {
+func makeOutboundMessage(s3Svc uva_s3.UvaS3, bucket string, key string) (*awssqs.Message, error) {
 
-	s3Info, err := s3info(bucket, key)
+	// get the bucket object details
+	o := uva_s3.NewUvaS3Object(bucket, key)
+	s3Obj, err := s3Svc.StatObject(o)
 	if err != nil {
 		return nil, err
 	}
 
 	// build the expected structure
 	events := Events{}
-	event := S3EventRecord{}
 	events.Records = make([]S3EventRecord, 0, 1)
-	event.S3 = *s3Info
+	event := S3EventRecord{}
+	res := S3Record{}
+	res.Bucket.Name = s3Obj.BucketName()
+	res.Object.Key = s3Obj.KeyName()
+	res.Object.Size = s3Obj.Size()
+	event.S3 = res
 	events.Records = append(events.Records, event)
 
 	buff, err := json.Marshal(events)
