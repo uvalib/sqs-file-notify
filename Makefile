@@ -6,7 +6,7 @@ GOGET = $(GOCMD) get
 GOMOD = $(GOCMD) mod
 GOFMT = $(GOCMD) fmt
 GOVET = $(GOCMD) vet
-PACKAGENAME = virgo4-file-notify
+PACKAGENAME = sqs-file-notify
 BINNAME = $(PACKAGENAME)
 
 build: darwin 
@@ -14,8 +14,6 @@ build: darwin
 all: darwin linux
 
 darwin:
-	#GOOS=darwin GOARCH=amd64 $(GOBUILD) -a -o bin/$(BINNAME).darwin cmd/$(PACKAGENAME)/*.go
-	# see https://github.com/golang/go/issues/41572
 	GOOS=darwin GOARCH=amd64 $(GOBUILD) -a -race -o bin/$(BINNAME).darwin cmd/$(PACKAGENAME)/*.go
 
 linux:
